@@ -12,12 +12,48 @@ export function initTable(settings, onAction) {
     const root = cloneTemplate(tableTemplate);
 
     // @todo: #1.2 —  вывести дополнительные шаблоны до и после таблицы
+    //console.log('settings: ', settings);
+    const beforeArr = Array.isArray(before) ? [...before].reverse() : [];
+    beforeArr.forEach(subName => {
+        const tpl = document.getElementById(subName);
+        if (!tpl) { console.warn('шаблон не найден: ', subName); return;}
+        root[subName] = cloneTemplate(subName);
+        root.container.prepend(root[subName].container);
+    });
+
+    const afterArr = Array.isArray(after) ? after : [];
+    afterArr.forEach(subName => {
+        const tpl = document.getElementById(subName);
+        if (!tpl) { console.warn('шаблон не найден: ', subName); return;}
+        root[subName] = cloneTemplate(subName);
+        root.container.append(root[subName].container);
+    });
 
     // @todo: #1.3 —  обработать события и вызвать onAction()
+    root.container.addEventListener('change', () => {onAction()});
+    root.container.addEventListener('reset', () => {setTimeout(() => onAction(), 0)});
+    root.container.addEventListener('submit', (e) => {
+        e.preventDefault();
+        onAction(e.submitter);
+    });
 
     const render = (data) => {
         // @todo: #1.1 — преобразовать данные в массив строк на основе шаблона rowTemplate
-        const nextRows = [];
+        const nextRows = data.map(item => {
+            const row = cloneTemplate(rowTemplate);
+            Object.keys(item).forEach(key => {
+                const el = row.elements?.[key];
+                if (!el) return;
+                const tag = el && el.tagName? el.tagName.toLowerCase() : undefined;
+                if (tag === 'input' || tag === 'select' || tag === 'textarea') {
+                    el.value = item[key] ?? '';
+                } else {
+                    el.textContent = item[key] ?? '';
+                }
+            });
+            return row.container;
+        });
+        
         root.elements.rows.replaceChildren(...nextRows);
     }
 
